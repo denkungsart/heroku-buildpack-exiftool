@@ -12,9 +12,9 @@ indent() {
     CACHE_DIR=$2
 BUILDPACK_DIR=`cd $(dirname $0)/..; pwd`
 
-# extract url of latest production version from the rss feed
+# extract url of latest release from the rss feed (production flag no longer reliable)
 RSSFEED_URL="https://exiftool.org/rss.xml"
-TARBALL_URL="$(curl -s -o - "$RSSFEED_URL" | perl -ne 'if (!$got && (/\<title\>.+production release.+\<\/title\>/i .. /\<\/item\>/) && /enclosure.+(http.+\.tar\.gz)/) {print $1; $got = 1}')"
+TARBALL_URL="$(curl -s -o - "$RSSFEED_URL" | perl -ne 'if (!$got && /enclosure.+(http.+\.tar\.gz)/) {print $1; $got = 1}')"
  RENAME_DIR="$(echo "$TARBALL_URL" | perl -ne '/.+\/(.+)\.tar\.gz/ && print $1')"
  VERSION_NO="$(echo "$RENAME_DIR"  | perl -ne '/ExifTool-(.+)$/i   && print $1')"
 
@@ -28,7 +28,8 @@ cd       "$TARGET_PATH"
 
 # download and unpack
 echo "Fetching   $TARBALL_URL" | indent
-curl --fail --retry 3 --retry-delay 1 --connect-timeout 3 "$TARBALL_URL" -s -o - | tar xzf -
+# SourceForge serves an HTML redirect for downloads; follow it so tar sees actual bytes.
+curl --fail --retry 3 --retry-delay 1 --connect-timeout 3 -L "$TARBALL_URL" -s -o - | tar xzf -
 
 # configure path
 mkdir -p    "$PROFILE_PATH"
