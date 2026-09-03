@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # bin/compile BUILD_DIR CACHE_DIR ENV_DIR
 
+set -e
+set -o pipefail
+
 arrow() {
   sed -u 's/^/-----> /'
 }
@@ -21,15 +24,24 @@ TARBALL_URL="$(curl -s -o - "$RSSFEED_URL" | perl -ne 'if (!$got && /enclosure.+
 PROFILE_PATH="$BUILD_DIR/.profile.d"
  TARGET_PATH="$BUILD_DIR/vendor"
  VENDOR_PATH="/app/vendor"
+TARBALL_PATH="$CACHE_DIR/$RENAME_DIR.tar.gz"
+TARBALL_DOWNLOAD="$TARBALL_PATH.download"
 
 echo "Installing exiftool $VERSION_NO" | arrow
-mkdir -p "$TARGET_PATH"
+mkdir -p "$CACHE_DIR" "$TARGET_PATH"
 cd       "$TARGET_PATH"
 
 # download and unpack
-echo "Fetching   $TARBALL_URL" | indent
-# SourceForge serves an HTML redirect for downloads; follow it so tar sees actual bytes.
-curl --fail --retry 3 --retry-delay 1 --connect-timeout 3 -L "$TARBALL_URL" -s -o - | tar xzf -
+if [ -f "$TARBALL_PATH" ] && tar tzf "$TARBALL_PATH" > /dev/null 2>&1; then
+  echo "Using exiftool tar from cache" | indent
+else
+  echo "Fetching   $TARBALL_URL" | indent
+  # SourceForge serves an HTML redirect for downloads; follow it so tar sees actual bytes.
+  curl --fail --retry 3 --retry-delay 1 --connect-timeout 3 -L "$TARBALL_URL" -s -o "$TARBALL_DOWNLOAD"
+  tar tzf "$TARBALL_DOWNLOAD" > /dev/null
+  mv "$TARBALL_DOWNLOAD" "$TARBALL_PATH"
+fi
+tar xzf "$TARBALL_PATH"
 
 # configure path
 mkdir -p    "$PROFILE_PATH"
